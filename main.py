@@ -11,8 +11,11 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 import bs4
 
+import random
+import datetime
+
 import settingBot
-from py import discordMusic
+from py import discordMusic, mongodb
 
 
 TOKEN = settingBot.TOKEN
@@ -25,7 +28,7 @@ YDL_OPTIONS = {'format': 'bestaudio', 'noplaylist':'True'}
 FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
 
 
-musicList = deque()
+musicList = deque() # [[title1, url1], [title2, url2] ... ]
 
 
 @bot.event
@@ -55,7 +58,8 @@ async def on(ctx):
         except Exception as e2:
             # 유저가 채널에 접속하지 않은 상태로
             # 봇을 부르면 메세지 호출
-            await ctx.send('채널에 유저가 접속해있지 않습니다.\n먼저 봇을 불러낼 채널에 접속해주세요.')
+            await ctx.send('채널에 유저가 접속해있지 않습니다.')
+            await ctx.send('먼저 봇을 불러낼 채널에 접속해주세요.')
             print(f'error 2\n{e2}')
 
 
@@ -73,29 +77,56 @@ async def youtubePlayURL(ctx, *, url):
 
         vc.play(FFmpegPCMAudio(URL, **FFMPEG_OPTIONS)) # 오디오 소스 재생
         await ctx.send(embed = discord.Embed(title = '음악재생', description = f'play {url}', color=0x00ff00))
+    else:
+        await ctx.send('이미 음악이 재생 중입니다.')
+        await ctx.send('~ps 검색어를 통해 음악을 예약하거나 모든 음악을 종료시킨 후 다시 시도해주세요.')
 
 
 # 검색을 통한 유튜브 재생
 # ~ps 산들 취기를 빌려 => msg = "산들 취기를 빌려"
 @bot.command(name='ps')
 async def youtubePlaySearch(ctx, *, msg):
-    if not vc.is_playing():
-        title, url = discordMusic.getMusicInfo(msg)
+    title, url = discordMusic.getMusicInfo(msg)
+    musicList.append([title, url])
 
-        music_now.appendleft(title)
+    def play_next(ctx):
+        if len(musicList) > 0:
+            play = musicList.popleft()
+
+            # 음악 재생
+            URL = discordMusic.playMusic(play[1])
+            vc.play(FFmpegPCMAudio(URL, **FFMPEG_OPTIONS), after=lambda e:play_next(ctx))
+            
+    if not vc.is_playing():
+        play = musicList.popleft()
 
         # 음악 재생
-        URL = discordMusic.playMusic(url)
+        URL = discordMusic.playMusic(play[1])
         
-        await ctx.send(embed = discord.Embed(title='음악재생', description = music_now[0] + '을(를) 재생하고 있습니다.', color = 0x00ff00))
-        vc.play(FFmpegPCMAudio(URL, **FFMPEG_OPTIONS), alter=lambda e:play_next(ctx))
-    
+        await ctx.send(embed = discord.Embed(title='음악재생', description = play[0] + '을(를) 재생하고 있습니다.', color = 0x00ff00))
+        vc.play(FFmpegPCMAudio(URL, **FFMPEG_OPTIONS), after=lambda e:play_next(ctx))
     else:
-        await ctx.send('이미 음악이 재생 중입니다.')
+        await ctx.send(embed = discord.Embed(title='음악예약', description = title + '이 예약되었습니다.', color = 0x00ff00))
+
+
+# 예약 리스트 출력
+@bot.command(name='li')
+async def youtubePlaySearch(ctx):
+    await ctx.send("음악 대기열입니다.\n")
+    titleList = [music[0] for music in musicList]
+    titleList = '\n'.join(titleList)
+    await ctx.send(titleList)
+
+
+# 예약 리스트 셔플
+@bot.command(name='sh')
+async def shuffle(ctx):
+    random.shuffle(musicList)
+    await ctx.send('예약 순서가 랜덤으로 바뀝니다.')
 
 
 # 검색 결과에 대해 리스트 출력하기
-@bot.command(name='li')
+@bot.command(name='sl')
 async def youtubePlaySearch(ctx, *, msg):
     chromedriver_file = 'chromedriver.exe'
     driver = webdriver.Chrome(chromedriver_file)
@@ -132,6 +163,30 @@ async def replay(ctx):
         await ctx.send('재생할 노래가 없어요.')
     else:
         await ctx.send(embed=discord.Embed(title='다시재생', description = '정지된 음악을 다시 재생합니다.'))
+
+
+# 아이디를 통해 플레이 리스트 저장하기
+@bot.command(name='conn')
+async def savePlayList(ctx, *, msg):
+    if msg[0] == 's':
+        msg = msg[1:]
+        user_id = ctx.author.id
+        title, url = discordMusic.getMusicInfo(msg)
+        
+        res = mongodb.savePlayList(user_id, title, url, 'playlist') # res : 결과 메세지
+        await ctx.send(embed = discord.Embed(title='Success', description = res, color = 0x00ff00))
+
+    else:
+        await ctx.send(embed=discord.Embed(title='Fail', description = '"conn s 노래 제목" 형식으로 입력해주세요.'))
+
+
+# 사용자 아이디#코드번호 형태로 데이터 받아오는 명령
+@bot.command(name='test')
+async def replay(ctx, msg):
+    print(ctx.author.id)
+    print('-' * 30)
+    print(ctx.author.name, ctx.author.nick)
+    print(dir(ctx.author))
 
 
 bot.run(TOKEN)

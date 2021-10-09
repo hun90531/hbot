@@ -41,6 +41,7 @@ def getMusicInfo(msg):
 
         return title, url
 
+# url을 입력받아 음악 재생
 def playMusic(url):
     with YoutubeDL(YDL_OPTIONS) as ydl:
         info = ydl.extract_info(url, download=False)
