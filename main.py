@@ -1,4 +1,4 @@
-from ssl import AlertDescription
+# from ssl import AlertDescription
 import discord
 from discord.ext import commands
 from discord import FFmpegPCMAudio
@@ -12,7 +12,6 @@ from selenium.webdriver.chrome.options import Options
 import bs4
 
 import random
-import datetime
 
 import settingBot
 from py import discordMusic, mongodb
@@ -165,28 +164,41 @@ async def replay(ctx):
         await ctx.send(embed=discord.Embed(title='다시재생', description = '정지된 음악을 다시 재생합니다.'))
 
 
-# 아이디를 통해 플레이 리스트 저장하기
+# 아이디를 통해 플레이 리스트 저장, 삭제 목록보기
 @bot.command(name='conn')
 async def savePlayList(ctx, *, msg):
-    if msg[0] == 's':
+    user_id = ctx.author.id
+    uset_nick = str(ctx.author).split('#')[0]
+
+    if len(msg) > 0 and msg[0] == 's':
         msg = msg[1:]
-        user_id = ctx.author.id
         title, url = discordMusic.getMusicInfo(msg)
         
         res = mongodb.savePlayList(user_id, title, url, 'playlist') # res : 결과 메세지
         await ctx.send(embed = discord.Embed(title='Success', description = res, color = 0x00ff00))
 
+    elif len(msg) > 0 and msg[0] == 'l':
+        res = mongodb.showPlayList(user_id, 'playlist')
+
+        if res:
+            await ctx.send('%s님의 플리이리스트' % uset_nick)
+            for i in range(len(res)):
+                await ctx.send('%d. %s\n' %(i + 1, res[i][0]))
+        else:
+            await ctx.send(embed=discord.Embed(title='Fail', description = '아무 노래도 저장되어 있지 않습니다.'))    
+        
+
+    elif len(msg) > 0 and msg[0] == 'd':
+        num = 0
+        if len(msg) > 1:
+            num = int(msg[2])
+        
+        res = mongodb.deletePlayList(user_id, num, 'playlist')
+        await ctx.send(embed = discord.Embed(title='Success', description = res, color = 0x00ff00))
+
     else:
-        await ctx.send(embed=discord.Embed(title='Fail', description = '"conn s 노래 제목" 형식으로 입력해주세요.'))
-
-
-# 사용자 아이디#코드번호 형태로 데이터 받아오는 명령
-@bot.command(name='test')
-async def replay(ctx, msg):
-    print(ctx.author.id)
-    print('-' * 30)
-    print(ctx.author.name, ctx.author.nick)
-    print(dir(ctx.author))
+        res = '"conn s 노래 제목"\n"conn d (삭제 번호 or 전체 삭제 : -1)"\n"conn l"\n위와 같은 형식으로 입력해주세요.'
+        await ctx.send(embed=discord.Embed(title='Fail', description = res))
 
 
 bot.run(TOKEN)

@@ -57,3 +57,47 @@ def savePlayList(id, title, url, collection):
         )
         
     return '[%s] 저장이 완료되었습니다.' % title
+
+
+# 플레이리스트 목록 보기 
+def showPlayList(id, collection):
+    connMongDB()
+
+    # id가 DB에 저장되어 있지 않다면 새로 만들어서 저장
+    if not db[collection].find_one({'user_id' : id}):
+        return False
+
+    else:
+        user_data = db[collection].find_one({'user_id' : id})
+
+        return user_data['playlist']
+
+
+# 플레이리스트 삭제
+def deletePlayList(id, num, collection):
+    connMongDB()
+
+    if not db[collection].find_one({'user_id' : id}):
+        return '플레이리스트가 생성되지 않았습니다.'
+
+    user_data = db[collection].find_one({'user_id' : id})
+    play = user_data['playlist']
+
+    if num == -1:
+        return '플레이리스트의 모든 음악이 삭제되었습니다.'
+
+    if num == 0:
+        del_music = play.pop()[0]
+
+    else:
+        del_music = play.pop(num - 1)[0]
+
+    db[collection].update(
+        {'user_id' : id},
+        {'$set': {
+            'playlist' : play
+            }
+        }
+    )
+
+    return '[%s] 삭제가 완료되었습니다.' % del_music

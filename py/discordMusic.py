@@ -27,11 +27,10 @@ def getMusicInfo(msg):
         print(f'msg : {msg}')
         driver.get('https://www.youtube.com/results?search_query=' + msg)
 
-        bs = bs4.BeautifulSoup(driver.page_source, 'html.parser')
+        bs = bs4.BeautifulSoup(driver.page_source, 'lxml')
 
         # 검색 결과에서 id 값이 'vidio-title'인 태그를 추출후
         titles = bs.find_all('a', {'id' : 'video-title'})
-
         title = titles[i].text.strip() # 검색 결과 중 i 번째 선택 (-s 없으면 0  )
 
         # 상대 경로로 되어있는 href 값을 가져와 url 만들기
