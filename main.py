@@ -40,7 +40,7 @@ async def on_ready():
 # pip install pynacl
 @bot.command(name='on')
 async def on(ctx):
-    await ctx.send('Hello Wolrd~~!')
+    await ctx.send('봇 사용법을 확인하시려면 ~h를 입력해주세요.')
 
     try:
         global vc
@@ -67,18 +67,17 @@ async def on(ctx):
 async def off(ctx):
     await vc.disconnect()
 
-    
-# URL 재생
-@bot.command(name='pu')
-async def youtubePlayURL(ctx, *, url):
-    if not vc.is_playing():
-        URL = discordMusic.playMusic(url)
 
-        vc.play(FFmpegPCMAudio(URL, **FFMPEG_OPTIONS)) # 오디오 소스 재생
-        await ctx.send(embed = discord.Embed(title = '음악재생', description = f'play {url}', color=0x00ff00))
-    else:
-        await ctx.send('이미 음악이 재생 중입니다.')
-        await ctx.send('~ps 검색어를 통해 음악을 예약하거나 모든 음악을 종료시킨 후 다시 시도해주세요.')
+# 가이드
+@bot.command(name='h')
+async def guide(ctx):
+    with open('bot guide.txt', 'r', encoding='UTF8') as f:
+        print()
+        res = f.readlines()
+        for r in res:
+            if r != '\n':
+                await ctx.send(r)
+
 
 
 # 검색을 통한 유튜브 재생
