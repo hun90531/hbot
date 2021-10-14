@@ -60,7 +60,7 @@ def savePlayList(id, title, url, collection):
 
 
 # 플레이리스트 목록 보기 
-def showPlayList(id, collection):
+def getPlayList(id, collection):
     connMongDB()
 
     # id가 DB에 저장되어 있지 않다면 새로 만들어서 저장

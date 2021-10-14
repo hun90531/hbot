@@ -178,7 +178,7 @@ async def savePlayList(ctx, *, msg):
         await ctx.send(embed = discord.Embed(title='Success', description = res, color = 0x00ff00))
 
     elif len(msg) > 0 and msg[0] == 'l':
-        res = mongodb.showPlayList(user_id, 'playlist')
+        res = mongodb.getPlayList(user_id, 'playlist')
 
         if res:
             await ctx.send('%s님의 플리이리스트' % uset_nick)
@@ -195,10 +195,39 @@ async def savePlayList(ctx, *, msg):
         
         res = mongodb.deletePlayList(user_id, num, 'playlist')
         await ctx.send(embed = discord.Embed(title='Success', description = res, color = 0x00ff00))
+    
+    elif len(msg) > 0 and msg[0] == 'p':
+        res = mongodb.getPlayList(user_id, 'playlist')
+        if res:
+            for i in res:
+                musicList.append([i[0], i[1]]) # title, url
+            
+            
+            play = musicList.popleft()
+            if not vc.is_playing():
+                def play_next(ctx):
+                    if len(musicList) > 0:
+                        play = musicList.popleft()
+
+                        # 음악 재생
+                        URL = discordMusic.playMusic(play[1])
+                        vc.play(FFmpegPCMAudio(URL, **FFMPEG_OPTIONS), after=lambda e:play_next(ctx))
+
+                URL = discordMusic.playMusic(play[1])
+
+                await ctx.send(embed = discord.Embed(title='음악재생', description = play[0] + '을(를) 재생하고 있습니다.', color = 0x00ff00))
+                vc.play(FFmpegPCMAudio(URL, **FFMPEG_OPTIONS), after=lambda e:play_next(ctx))
+            
+            else:
+                await ctx.send(embed = discord.Embed(title='음악예약', description = '플레이리스트가 이 예약되었습니다.', color = 0x00ff00))
+
+        else:
+            await ctx.send(embed=discord.Embed(title='Fail', description = '저장된 플레이리스트가 없습니다.'))
 
     else:
         res = '"conn s 노래 제목"\n"conn d (삭제 번호 or 전체 삭제 : -1)"\n"conn l"\n위와 같은 형식으로 입력해주세요.'
         await ctx.send(embed=discord.Embed(title='Fail', description = res))
+
 
 
 bot.run(TOKEN)
